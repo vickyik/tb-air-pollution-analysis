@@ -1,0 +1,366 @@
+{\rtf1\ansi\ansicpg1252\cocoartf2761
+\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
+{\colortbl;\red255\green255\blue255;}
+{\*\expandedcolortbl;;}
+\margl1440\margr1440\vieww25400\viewh14860\viewkind0
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+
+\f0\fs24 \cf0 # Data Sources Documentation\
+\
+Detailed documentation of all data sources used in the Tuberculosis and Air Pollution Analysis project.\
+\
+## Table of Contents\
+1. [Tuberculosis Data](#tuberculosis-data)\
+2. [Air Quality Data](#air-quality-data)\
+3. [Demographic Data](#demographic-data)\
+4. [Geographic Crosswalks](#geographic-crosswalks)\
+\
+---\
+\
+## Tuberculosis Data\
+\
+### TB Cases (2003-2011)\
+\
+**Source**: HealthMap TB  \
+**URL**: https://healthmap.org/tb/  \
+**Geographic Level**: County (aggregated to CBSA)  \
+**Temporal Coverage**: 2003-2011 (primary), with 2006-2010 averages for some states  \
+**Format**: CSV with county-level annual case counts\
+\
+#### Original Data Provider\
+State Departments of Public Health contributed data to HealthMap for creation of a public, nationwide TB dataset.\
+\
+#### Data Description\
+- Publicly available TB data from 2006-2010\
+- Rates per 100,000 calculated from average number of cases over this timespan\
+- Population data from US Census ACS 5-year county estimates, 2006-2010\
+\
+#### Field Codes\
+- **NR** = Not reported\
+- **NA** = Not applicable\
+\
+#### Geographic Reporting Notes\
+\
+**Standard County-Level Reporting:**\
+Most states report at the county level with yearly breakdowns.\
+\
+**Health District Reporting:**\
+The following states report by health district rather than county:\
+- **Idaho**: Cases reported by health district; rates calculated using health district population\
+- **Mississippi**: Cases reported by health district; rates calculated using health district population\
+\
+**States with Special Handling:**\
+\
+| State | Years | Special Considerations |\
+|-------|-------|------------------------|\
+| Alaska | All | **EXCLUDED** - Cases reported by health district, but no clear geographic link between boroughs and health districts |\
+| Missouri | 2007-2011 | Metro areas (Joplin, Kansas City) had cases recorded separately from municipal area. Municipal cases averaged over metro counties and added to independent counts |\
+| North Dakota | 2006-2010 | No yearly breakdown available; average cases used |\
+| Pennsylvania | 2005-2009 | Different date range than other states |\
+| Virginia | All | Combined reporting: Prince William includes Prince William County, Manassas City, Manassas Park City; Fairfax County includes Fairfax City and Falls Church City |\
+| Wyoming | 2005-2010 | No yearly breakdown available; average cases used |\
+\
+#### Data Interpolation Methodology\
+\
+**Issue**: Some states reported TB cases for certain counties but not all.\
+\
+**Solution**: Interpolation performed using state totals:\
+\
+1. Start with total state TB cases\
+2. Subtract cases from counties with reported data\
+3. Calculate remainder = unreported cases\
+4. Divide remainder equally among counties without data\
+\
+**Example (Nevada 2010)**:\
+- Total state cases: 114\
+- Clark County: 97 cases\
+- Washoe County: 12 cases\
+- Carson City: 2 cases\
+- **Subtotal reported**: 111 cases\
+- **Unreported**: 114 - 111 = 3 cases\
+- **Distribution**: 3 cases \'f7 14 remaining counties = 0.214 cases per county (averaged)\
+\
+#### Data Processing Steps\
+\
+1. **Import**: County-level TB case data (wide format by year)\
+2. **Reshape**: Convert from wide to long format (county-year observations)\
+3. **FIPS Assignment**: Create 5-digit county FIPS codes\
+4. **Crosswalk Merge**: Join county FIPS to CBSA codes\
+5. **Aggregation**: Sum county-level cases to CBSA totals by year\
+6. **Rate Calculation**: Calculate TB rate per 100,000 using CBSA population denominators\
+\
+---\
+\
+### TB Deaths (2003-2011)\
+\
+**Source**: CDC WONDER Underlying Cause of Death  \
+**URL**: https://wonder.cdc.gov/deaths-by-underlying-cause.html  \
+**ICD-10 Codes**: A15-A19 (Tuberculosis)  \
+**Geographic Level**: State (assigned to CBSA)  \
+**Temporal Coverage**: 2003-2011\
+\
+#### Data Processing\
+\
+**Assignment Method**: State-level death counts assigned to all CBSAs within each state\
+- Each CBSA in a state receives the same state-level death count for a given year\
+- This is a **repeated value assignment**, not a geographic aggregation\
+- Does **NOT** reflect intra-state geographic variation in TB mortality\
+\
+**Rationale**: TB death data not available at county or CBSA level from CDC WONDER for this time period\
+\
+**Limitation**: Cannot distinguish geographic variation in TB mortality within states\
+\
+---\
+\
+## Air Quality Data\
+\
+### Air Pollutant Concentrations (2003-2011)\
+\
+**Source**: EPA Air Quality Statistics by City, 2000-2023  \
+**URL**: https://www.epa.gov/air-trends/air-quality-cities-and-counties  \
+**Geographic Level**: CBSA (direct)  \
+**Temporal Coverage**: 2000-2023 (subset 2003-2011 used for analysis)  \
+**Format**: Excel workbook with CBSA trends\
+\
+#### Pollutants and Metrics\
+\
+| Pollutant | Metric | Variable Name | Unit |\
+|-----------|--------|---------------|------|\
+| Carbon Monoxide (CO) | 2nd Maximum 8-hour | `co_2ndmax` | ppm |\
+| Nitrogen Dioxide (NO\uc0\u8322 ) | 98th Percentile 1-hour | `no2_98thpercentile` | ppb |\
+| Nitrogen Dioxide (NO\uc0\u8322 ) | Annual Mean | `no2_annualmean` | ppb |\
+| Ozone (O\uc0\u8323 ) | 4th Maximum 8-hour | `o3_4thmax` | ppm |\
+| Particulate Matter (PM10) | 2nd Maximum 24-hour | `pm10_2ndmax` | \uc0\u956 g/m\'b3 |\
+| Fine Particulate (PM2.5) | 98th Percentile 24-hour | `pm25_98thpercentile` | \uc0\u956 g/m\'b3 |\
+| Fine Particulate (PM2.5) | Weighted Annual Mean | `pm25_weightedannualmean` | \uc0\u956 g/m\'b3 |\
+| Sulfur Dioxide (SO\uc0\u8322 ) | 99th Percentile 1-hour | `so2_99thpercentile` | ppb |\
+\
+#### Data Structure (Original)\
+- **Wide format**: One row per CBSA, one column per year (2000-2023)\
+- **Multiple rows per CBSA**: Separate rows for each pollutant-statistic combination\
+\
+#### Data Processing\
+\
+1. **Reshape to long**: Convert year columns (D, E, F...) to CBSA-pollutant-year rows\
+2. **Create metric names**: Combine pollutant and statistic into single variable\
+3. **Reshape to wide**: One row per CBSA-year with pollutant metrics as columns\
+4. **Subset years**: Filter to 2003-2011 for TB analysis alignment\
+\
+---\
+\
+### Air Quality Index (AQI) Summaries (2003-2011)\
+\
+**Source**: EPA Air Quality Index Report  \
+**URLs**: \
+- https://www.epa.gov/outdoor-air-quality-data/air-quality-index-report\
+- https://aqs.epa.gov/aqsweb/airdata/download_files.html#Annual  \
+\
+**File Type**: `annual_aqi_by_cbsa_YYYY.zip` (one file per year)  \
+**Geographic Level**: CBSA (direct)  \
+**Temporal Coverage**: 2000-2023 (subset 2003-2011 used)\
+\
+#### AQI Metrics\
+\
+**Day Count Variables**:\
+- `dayswith_aqi`: Total days with AQI data\
+- `gooddays_aqi`: Days with Good air quality (AQI 0-50)\
+- `moderatedays_aqi`: Days with Moderate air quality (AQI 51-100)\
+- `unhealthyforsensitivegroupsdays_`: Days Unhealthy for Sensitive Groups (AQI 101-150)\
+- `unhealthydays_aqi`: Days Unhealthy (AQI 151-200)\
+- `veryunhealthydays_aqi`: Days Very Unhealthy (AQI 201-300)\
+- `hazardousdays_aqi`: Days Hazardous (AQI 301+)\
+\
+**Summary Statistics**:\
+- `maxaqi_aqi`: Maximum AQI value for the year\
+- `thpercentile_aqi`: 90th percentile AQI (variable name reflects original field)\
+- `median_aqi`: Median AQI value\
+\
+#### EPA AQI Categories\
+\
+| AQI Range | Category | Color Code | Health Message |\
+|-----------|----------|------------|----------------|\
+| 0-50 | Good | Green (#00E400) | Air quality is satisfactory |\
+| 51-100 | Moderate | Yellow (#FFFF00) | Acceptable; unusually sensitive people should consider limiting prolonged outdoor exertion |\
+| 101-150 | Unhealthy for Sensitive Groups | Orange (#FF7E00) | Sensitive groups may experience health effects |\
+| 151-200 | Unhealthy | Red (#FF0000) | Everyone may begin to experience health effects |\
+| 201-300 | Very Unhealthy | Purple (#8F3F97) | Health alert: everyone may experience more serious health effects |\
+| 301+ | Hazardous | Maroon (#7E0023) | Health warnings of emergency conditions |\
+\
+---\
+\
+## Demographic Data\
+\
+### Population Estimates (2003-2011)\
+\
+#### 2003-2010 (Intercensal Estimates)\
+\
+**Source**: US Census Bureau Intercensal County Population Estimates  \
+**File**: `co-est00int-sexracehisp.csv`  \
+**URL**: https://www2.census.gov/programs-surveys/popest/datasets/2000-2010/intercensal/county/  \
+**Geographic Level**: County  \
+**Temporal Coverage**: April 1, 2000 to July 1, 2010\
+\
+**Variables**:\
+- Total population\
+- Sex: Male, Female\
+- Hispanic Origin: Hispanic, Not Hispanic\
+- Race: White, Black, American Indian/Alaska Native (AIAN), Asian, Native Hawaiian/Other Pacific Islander (NHOPI), Two or More Races\
+\
+**Census Race Codes**:\
+- 1 = White alone\
+- 2 = Black or African American alone\
+- 3 = American Indian and Alaska Native alone\
+- 4 = Asian alone\
+- 5 = Native Hawaiian and Other Pacific Islander alone\
+- 6 = Two or More Races\
+\
+#### 2011 (Vintage 2011 Estimates)\
+\
+**Source**: US Census Bureau County Population Estimates  \
+**File**: `co-est2011-alldata.csv`  \
+**URL**: https://www2.census.gov/programs-surveys/popest/datasets/2010-2011/counties/totals/  \
+**Geographic Level**: County  \
+**Base Date**: April 1, 2010 (Census)  \
+**Estimate Date**: July 1, 2011\
+\
+**Variables**: Same demographic breakdowns as intercensal data\
+\
+#### Boundary Change Note\
+\
+**Important**: Intercensal 2003-2010 and 2011 vintage Census boundaries differ slightly.\
+\
+**Our Approach**:\
+- CBSA codes and titles kept consistent across all years\
+- Potential boundary changes flagged in data\
+- County-to-CBSA aggregation uses crosswalk valid for each time period\
+\
+---\
+\
+## Geographic Crosswalks\
+\
+### County-to-CBSA Mapping\
+\
+**Source**: Created from Census/OMB CBSA delineation files  \
+**Format**: 5-digit county FIPS \uc0\u8594  CBSA code mapping  \
+**Fields**:\
+- `county_fips`: 5-digit county FIPS code (SSCCC format)\
+- `state_fips`: 2-digit state FIPS code\
+- `cbsa_code`: CBSA identifier\
+- `cbsatitle`: CBSA name\
+\
+#### FIPS Code Structure\
+- **State FIPS**: 2 digits (e.g., "09" = Connecticut)\
+- **County FIPS**: 3 digits within state (e.g., "001" = Fairfield County)\
+- **Combined**: 5-digit string (e.g., "09001")\
+\
+---\
+\
+### Connecticut Planning Region Realignment\
+\
+**Issue**: Connecticut eliminated county governments and transitioned to planning regions\
+\
+**Years Affected**: 2003-2011\
+\
+**Mapping**:\
+\
+| Old County FIPS | Old County Name | New Planning Region FIPS | Planning Region Name |\
+|-----------------|-----------------|--------------------------|----------------------|\
+| 09001 | Fairfield County | 09120, 09190 | Greater Bridgeport, Western CT |\
+| 09003 | Hartford County | 09110 | Capitol Planning Region |\
+| 09005 | Litchfield County | 09160 | Northwest Hills Planning Region |\
+| 09007 | Middlesex County | 09130 | Lower CT River Valley Planning Region |\
+| 09009 | New Haven County | 09170 | South Central CT Planning Region |\
+| 09011 | New London County | 09180 | Southeastern CT Planning Region |\
+| 09013 | Tolland County | 09110, 09150 | Capitol, Northeastern |\
+| 09015 | Windham County | 09150 | Northeastern CT Planning Region |\
+\
+**Note**: Some legacy counties map to multiple planning regions\
+\
+**Processing**:\
+1. Original TB/demographic data uses legacy county FIPS\
+2. Crosswalk maps old FIPS \uc0\u8594  new planning region FIPS\
+3. Planning region FIPS then mapped to CBSA codes\
+4. Ensures geographic consistency across 2003-2011\
+\
+---\
+\
+## Data Integration Summary\
+\
+### Final Dataset Structure\
+\
+**Unit of Analysis**: CBSA-year  \
+**Years**: 2003-2011  \
+**Number of CBSAs**: Varies by year and data availability (189 CBSAs with complete data)\
+\
+### Aggregation Methods\
+\
+| Data Type | Original Level | Aggregation Method |\
+|-----------|----------------|-------------------|\
+| TB Cases | County | Sum to CBSA |\
+| TB Deaths | State | Assign (repeat) to all CBSAs in state |\
+| Demographics | County | Sum to CBSA |\
+| Air Pollutants | CBSA | Direct (no aggregation) |\
+| AQI Metrics | CBSA | Direct (no aggregation) |\
+\
+### Missing Data Patterns\
+\
+**By Variable Type**:\
+- **TB Cases**: Some CBSAs lack data due to county non-reporting or health district reporting\
+- **Air Pollutants**: Not all CBSAs have monitoring stations; coverage varies by pollutant\
+- **AQI**: Requires at least one monitoring station; smaller CBSAs may lack coverage\
+- **Demographics**: Complete coverage (Census estimates all counties)\
+\
+**Handling**:\
+- Observations with missing outcome or key exposure variables excluded from specific analyses\
+- Missing data flags retained for transparency\
+- Geographic visualization indicates CBSAs with missing data (gray shading with dashed borders)\
+\
+---\
+\
+## Quality Control\
+\
+### Data Validation Steps\
+\
+1. **FIPS Code Validation**: All county FIPS verified against Census FIPS standards\
+2. **Crosswalk Completeness**: All counties in TB/demographic data matched to CBSA\
+3. **Duplicate Detection**: CBSA-year combinations checked for uniqueness\
+4. **Range Checks**: Pollutant concentrations and AQI values verified against EPA standards\
+5. **Population Denominators**: County populations sum correctly to CBSA totals\
+\
+### Known Limitations\
+\
+1. **TB Deaths**: State-level only; no intra-state geographic variation\
+2. **Connecticut**: Complex FIPS realignment may introduce minor geographic inconsistencies\
+3. **Interpolated TB Cases**: Some county values estimated rather than directly observed\
+4. **Air Quality Coverage**: Monitoring station availability creates geographic gaps\
+5. **Census Boundaries**: Minor differences between 2003-2010 (intercensal) and 2011 (vintage) estimates\
+\
+---\
+\
+## Citation Information\
+\
+### Primary Data Sources\
+\
+**Tuberculosis**:\
+- HealthMap TB. (2006-2010). Tuberculosis Cases by County. https://healthmap.org/tb/\
+- CDC WONDER. Underlying Cause of Death, 1999-2020. ICD-10 Codes A15-A19. https://wonder.cdc.gov/deaths-by-underlying-cause.html\
+\
+**Air Quality**:\
+- U.S. EPA. (2024). Air Quality Statistics by City, 2000-2023. Air Quality System Data Mart. https://www.epa.gov/air-trends/air-quality-cities-and-counties\
+- U.S. EPA. (2024). Air Quality Index Report. https://www.epa.gov/outdoor-air-quality-data/air-quality-index-report\
+\
+**Demographics**:\
+- U.S. Census Bureau. (2012). Intercensal Estimates of the Resident Population by Sex, Race, and Hispanic Origin for Counties: April 1, 2000 to July 1, 2010. https://www2.census.gov/programs-surveys/popest/datasets/2000-2010/intercensal/county/\
+- U.S. Census Bureau. (2012). County Population Estimates: April 1, 2010 to July 1, 2011. https://www2.census.gov/programs-surveys/popest/datasets/2010-2011/counties/totals/\
+\
+---\
+\
+## Contact for Data Questions\
+\
+For questions about data sources, processing methods, or variable definitions, contact:\
+\
+Victory Ikpea\
+Ikpeavictory@gmail.com\
+\
+\
+*Last Updated: Jan 15 2026*}
